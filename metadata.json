@@ -1,0 +1,5 @@
+{
+  "name": "iOS Icon Maker",
+  "description": "Upload, scale, position, and preview images to create perfect iOS app icons. Exports to the standard 1024x1024 format.",
+  "requestFramePermissions": []
+}
