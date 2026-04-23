@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Download, Settings, Smartphone, Image as ImageIcon, Move, Layout, MessageSquare, Camera, Cog, Phone, Mail } from 'lucide-react';
+import { Upload, Download, Settings, Smartphone, Image as ImageIcon, Move, Layout, MessageSquare, Camera, Cog, Phone, Mail, Crosshair } from 'lucide-react';
 
 type Mode = 'icon' | 'splash' | 'screenshot-iphone' | 'screenshot-ipad';
 
@@ -23,6 +23,7 @@ export default function App() {
   const [scale, setScale] = useState<number>(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [bgColor, setBgColor] = useState('#ffffff');
+  const [showCenterGuide, setShowCenterGuide] = useState(false);
   
   const [isDragging, setIsDragging] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
@@ -230,6 +231,16 @@ export default function App() {
               </div>
               
               <div className="pt-2">
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-neutral-700 mb-4 bg-neutral-50 p-3 rounded-lg border border-neutral-200 transition-colors hover:bg-neutral-100">
+                  <input 
+                    type="checkbox" 
+                    checked={showCenterGuide} 
+                    onChange={(e) => setShowCenterGuide(e.target.checked)}
+                    className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                  />
+                  <Crosshair size={16} className="text-neutral-500" />
+                  Show Center Alignment Guide
+                </label>
                 <button 
                   onClick={() => {
                     if(image) {
@@ -337,7 +348,15 @@ export default function App() {
               )}
               
               {/* Grid overlay for alignment */}
-              <div className="absolute inset-0 pointer-events-none border border-black/5 rounded-[inherit]"></div>
+              <div className="absolute inset-0 pointer-events-none border border-black/5 rounded-[inherit] overflow-hidden">
+                {showCenterGuide && (
+                  <>
+                    <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-red-500/70 -translate-x-1/2"></div>
+                    <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-red-500/70 -translate-y-1/2"></div>
+                    <div className="absolute left-1/2 top-1/2 w-2 h-2 bg-red-500 rounded-full -translate-x-1/2 -translate-y-1/2 shadow-sm"></div>
+                  </>
+                )}
+              </div>
             </div>
             
             <p className="text-sm text-neutral-500 mt-8 flex items-center gap-2">
