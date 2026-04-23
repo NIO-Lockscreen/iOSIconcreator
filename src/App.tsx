@@ -1,7 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Download, Settings, Smartphone, Image as ImageIcon, Move, Layout, MessageSquare, Camera, Cog, Phone, Mail } from 'lucide-react';
 
-type Mode = 'icon' | 'splash';
+type Mode = 'icon' | 'splash' | 'screenshot-iphone' | 'screenshot-ipad';
+
+const getPreviewConfig = (mode: Mode) => {
+  switch (mode) {
+    case 'icon':
+      return { width: 300, height: 300, radius: '22.5%', title: 'App Store Preview (1024x1024)', exportWidth: 1024, exportHeight: 1024, filename: 'icon.png' };
+    case 'splash':
+      return { width: 225, height: 487, radius: '40px', title: 'Splash Screen Preview (1284x2778)', exportWidth: 1284, exportHeight: 2778, filename: 'splash.png' };
+    case 'screenshot-iphone':
+      return { width: 225, height: 487, radius: '0px', title: 'iPhone 6.5" Screenshot (1284x2778)', exportWidth: 1284, exportHeight: 2778, filename: 'screenshot_iphone.png' };
+    case 'screenshot-ipad':
+      return { width: 300, height: 400, radius: '0px', title: 'iPad 13" Screenshot (2048x2732)', exportWidth: 2048, exportHeight: 2732, filename: 'screenshot_ipad.png' };
+  }
+};
 
 export default function App() {
   const [mode, setMode] = useState<Mode>('icon');
@@ -14,18 +27,17 @@ export default function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
 
-  const previewSize = mode === 'icon' ? 300 : { width: 225, height: 487 }; // 9:19.5 approx for modern iPhones
+  const previewConfig = getPreviewConfig(mode);
+  const previewSize = { width: previewConfig.width, height: previewConfig.height };
 
   useEffect(() => {
     // Reset position and scale when switching modes
     if (image) {
-      const w = typeof previewSize === 'number' ? previewSize : previewSize.width;
-      const h = typeof previewSize === 'number' ? previewSize : previewSize.height;
-      const initScale = Math.max(w / image.width, h / image.height);
-      setPos({ x: (w - image.width * initScale) / 2, y: (h - image.height * initScale) / 2 });
+      const initScale = Math.max(previewSize.width / image.width, previewSize.height / image.height);
+      setPos({ x: (previewSize.width - image.width * initScale) / 2, y: (previewSize.height - image.height * initScale) / 2 });
       setScale(initScale);
     }
-  }, [mode]);
+  }, [mode, previewSize.width, previewSize.height]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -37,10 +49,8 @@ export default function App() {
         const img = new Image();
         img.onload = () => {
           setImage(img);
-          const w = typeof previewSize === 'number' ? previewSize : previewSize.width;
-          const h = typeof previewSize === 'number' ? previewSize : previewSize.height;
-          const initScale = Math.max(w / img.width, h / img.height);
-          setPos({ x: (w - img.width * initScale) / 2, y: (h - img.height * initScale) / 2 });
+          const initScale = Math.max(previewSize.width / img.width, previewSize.height / img.height);
+          setPos({ x: (previewSize.width - img.width * initScale) / 2, y: (previewSize.height - img.height * initScale) / 2 });
           setScale(initScale);
         };
         img.src = src;
@@ -79,10 +89,8 @@ export default function App() {
 
   const handleScaleChange = (newScale: number) => {
     if (!image) return;
-    const w = typeof previewSize === 'number' ? previewSize : previewSize.width;
-    const h = typeof previewSize === 'number' ? previewSize : previewSize.height;
-    const centerX = w / 2;
-    const centerY = h / 2;
+    const centerX = previewSize.width / 2;
+    const centerY = previewSize.height / 2;
     const scaleRatio = newScale / scale;
     const newX = centerX - (centerX - pos.x) * scaleRatio;
     const newY = centerY - (centerY - pos.y) * scaleRatio;
@@ -94,13 +102,8 @@ export default function App() {
     if (!image) return;
     const canvas = document.createElement('canvas');
     
-    if (mode === 'icon') {
-      canvas.width = 1024;
-      canvas.height = 1024;
-    } else {
-      canvas.width = 1284;
-      canvas.height = 2778;
-    }
+    canvas.width = previewConfig.exportWidth;
+    canvas.height = previewConfig.exportHeight;
     
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -110,8 +113,7 @@ export default function App() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw image
-    const w = typeof previewSize === 'number' ? previewSize : previewSize.width;
-    const factor = canvas.width / w;
+    const factor = canvas.width / previewSize.width;
     const drawX = pos.x * factor;
     const drawY = pos.y * factor;
     const drawW = image.width * scale * factor;
@@ -122,7 +124,7 @@ export default function App() {
     // Export
     const dataUrl = canvas.toDataURL('image/png');
     const link = document.createElement('a');
-    link.download = mode === 'icon' ? 'icon.png' : 'splash.png';
+    link.download = previewConfig.filename;
     link.href = dataUrl;
     link.click();
   };
@@ -138,28 +140,40 @@ export default function App() {
             <h1 className="font-semibold text-lg whitespace-nowrap">iOS Asset Studio</h1>
           </div>
           
-          <div className="flex bg-neutral-100 p-1 rounded-full">
+          <div className="flex bg-neutral-100 p-1 rounded-full overflow-x-auto custom-scrollbar">
             <button 
               onClick={() => setMode('icon')}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${mode === 'icon' ? 'bg-white shadow-sm text-blue-600' : 'text-neutral-500 hover:text-neutral-700'}`}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${mode === 'icon' ? 'bg-white shadow-sm text-blue-600' : 'text-neutral-500 hover:text-neutral-700'}`}
             >
               App Icon
             </button>
             <button 
               onClick={() => setMode('splash')}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${mode === 'splash' ? 'bg-white shadow-sm text-blue-600' : 'text-neutral-500 hover:text-neutral-700'}`}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${mode === 'splash' ? 'bg-white shadow-sm text-blue-600' : 'text-neutral-500 hover:text-neutral-700'}`}
             >
               Splash Screen
+            </button>
+            <button 
+              onClick={() => setMode('screenshot-iphone')}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${mode === 'screenshot-iphone' ? 'bg-white shadow-sm text-blue-600' : 'text-neutral-500 hover:text-neutral-700'}`}
+            >
+              iPhone 6.5"
+            </button>
+            <button 
+              onClick={() => setMode('screenshot-ipad')}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${mode === 'screenshot-ipad' ? 'bg-white shadow-sm text-blue-600' : 'text-neutral-500 hover:text-neutral-700'}`}
+            >
+              iPad 13"
             </button>
           </div>
         </div>
         <button 
           onClick={exportIcon} 
           disabled={!image} 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full font-medium text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full font-medium text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
         >
           <Download size={16} />
-          Export {mode === 'icon' ? 'icon.png' : 'splash.png'}
+          Export
         </button>
       </header>
 
@@ -187,8 +201,8 @@ export default function App() {
                 </label>
                 <input 
                   type="range" 
-                  min={image ? Math.min((typeof previewSize === 'number' ? previewSize : previewSize.width)/image.width, (typeof previewSize === 'number' ? previewSize : previewSize.height)/image.height) * 0.1 : 0.1} 
-                  max={image ? Math.max((typeof previewSize === 'number' ? previewSize : previewSize.width)/image.width, (typeof previewSize === 'number' ? previewSize : previewSize.height)/image.height) * 10 : 10} 
+                  min={image ? Math.min(previewSize.width/image.width, previewSize.height/image.height) * 0.1 : 0.1} 
+                  max={image ? Math.max(previewSize.width/image.width, previewSize.height/image.height) * 10 : 10} 
                   step="0.01"
                   value={scale}
                   onChange={(e) => handleScaleChange(parseFloat(e.target.value))}
@@ -219,10 +233,8 @@ export default function App() {
                 <button 
                   onClick={() => {
                     if(image) {
-                      const w = typeof previewSize === 'number' ? previewSize : previewSize.width;
-                      const h = typeof previewSize === 'number' ? previewSize : previewSize.height;
-                      const initScale = Math.max(w / image.width, h / image.height);
-                      setPos({ x: (w - image.width * initScale) / 2, y: (h - image.height * initScale) / 2 });
+                      const initScale = Math.max(previewSize.width / image.width, previewSize.height / image.height);
+                      setPos({ x: (previewSize.width - image.width * initScale) / 2, y: (previewSize.height - image.height * initScale) / 2 });
                       setScale(initScale);
                     }
                   }}
@@ -237,22 +249,38 @@ export default function App() {
           <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100">
             <h3 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
               <Settings size={16} />
-              {mode === 'icon' ? 'iOS Icon Best Practices' : 'Splash Screen Best Practices'}
+              Best Practices
             </h3>
             <ul className="text-xs text-blue-700 space-y-2 list-disc pl-4">
-              {mode === 'icon' ? (
+              {mode === 'icon' && (
                 <>
                   <li><strong>Keep it simple:</strong> Find a single element that captures the essence of your app.</li>
                   <li><strong>No transparency:</strong> iOS icons must be opaque. The system will add a black background if you leave it transparent.</li>
                   <li><strong>Don't add the mask:</strong> The system automatically applies the rounded corners (squircle). Export as a square.</li>
                   <li><strong>Avoid text:</strong> Text is hard to read at small sizes. Use the app name below the icon instead.</li>
                 </>
-              ) : (
+              )}
+              {mode === 'splash' && (
                 <>
                   <li><strong>Brand Identity:</strong> Use your logo and primary brand color for a consistent first impression.</li>
                   <li><strong>Simplicity:</strong> Avoid clutter. A clean logo on a solid or gradient background works best.</li>
                   <li><strong>Safe Area:</strong> Keep important content centered to avoid being cut off by different screen sizes.</li>
                   <li><strong>Resolution:</strong> We export at 1284x2778, which covers the highest resolution iPhone Pro Max models.</li>
+                </>
+              )}
+              {mode === 'screenshot-iphone' && (
+                <>
+                  <li><strong>Focus on value:</strong> Highlight the main feature of your app in the first screenshot.</li>
+                  <li><strong>Avoid status bars:</strong> Apple prefers screenshots without status bars, or a clean status bar.</li>
+                  <li><strong>6.5" Display:</strong> The 1284 x 2778 size is required for iPhone Pro Max devices in App Store Connect.</li>
+                  <li><strong>Use text:</strong> Unlike the icon, add large, legible text to explain features visually.</li>
+                </>
+              )}
+              {mode === 'screenshot-ipad' && (
+                <>
+                  <li><strong>iPad specific:</strong> Show how your app uses the larger screen (sidebars, multi-column layouts).</li>
+                  <li><strong>Landscape vs Portrait:</strong> Both are supported. This tool exports portrait at 2048 x 2732.</li>
+                  <li><strong>Readability:</strong> Text overlays should be large enough to read when the screenshot is scaled down on the iPad screen.</li>
                 </>
               )}
             </ul>
@@ -264,15 +292,15 @@ export default function App() {
           {/* Main Large Preview */}
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-200 flex flex-col items-center justify-center min-h-[500px]">
             <h2 className="text-lg font-medium text-neutral-800 mb-8">
-              {mode === 'icon' ? 'App Store Preview (1024x1024)' : 'Splash Screen Preview (1284x2778)'}
+              {previewConfig.title}
             </h2>
             
             <div 
               className="relative shadow-2xl bg-white overflow-hidden select-none"
               style={{ 
-                width: typeof previewSize === 'number' ? previewSize : previewSize.width, 
-                height: typeof previewSize === 'number' ? previewSize : previewSize.height, 
-                borderRadius: mode === 'icon' ? '22.5%' : '40px',
+                width: previewSize.width, 
+                height: previewSize.height, 
+                borderRadius: previewConfig.radius,
                 backgroundColor: bgColor,
                 cursor: isDragging ? 'grabbing' : 'grab',
                 touchAction: 'none'
